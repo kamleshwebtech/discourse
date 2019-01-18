@@ -15,6 +15,7 @@ class Reviewable < ActiveRecord::Base
   has_many :reviewable_histories
 
   after_create do
+    DiscourseEvent.trigger(:reviewable_created, self)
     log_history(:created, created_by)
   end
 
@@ -112,12 +113,17 @@ class Reviewable < ActiveRecord::Base
       result = send(perform_method, performed_by, args)
 
       if result.success? && result.transition_to
-        self.status = Reviewable.statuses[result.transition_to]
-        save!
-        log_history(:transitioned, performed_by)
+        transition_to(result.transition_to, performed_by)
       end
     end
     result
+  end
+
+  def transition_to(status_symbol, performed_by)
+    self.status = Reviewable.statuses[status_symbol]
+    save!
+    log_history(:transitioned, performed_by)
+    DiscourseEvent.trigger(:reviewable_transitioned_to, status_symbol, self)
   end
 
   def self.bulk_perform_targets(performed_by, action, type, target_ids, args = nil)
@@ -139,9 +145,11 @@ class Reviewable < ActiveRecord::Base
     )
   end
 
-  def self.list_for(user, status: :pending)
+  def self.list_for(user, status: :pending, type: nil)
     return [] if user.blank?
-    viewable_by(user).where(status: statuses[status])
+    result = viewable_by(user).where(status: statuses[status])
+    result = result.where(type: type) if type
+    result
   end
 
 end

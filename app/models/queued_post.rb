@@ -26,25 +26,12 @@ class QueuedPost < ActiveRecord::Base
     @states ||= Enum.new(:new, :approved, :rejected)
   end
 
-  # By default queues are hidden from moderators
-  def self.visible_queues
-    @visible_queues ||= Set.new(['default'])
-  end
-
-  def self.visible
-    where(queue: visible_queues.to_a)
-  end
-
   def self.new_posts
     where(state: states[:new])
   end
 
   def self.new_count
-    new_posts.visible.count
-  end
-
-  def visible?
-    QueuedPost.visible_queues.include?(queue)
+    new_posts.count
   end
 
   def self.broadcast_new!
@@ -122,7 +109,7 @@ class QueuedPost < ActiveRecord::Base
     updates.each { |k, v| send("#{k}=", v) }
     changes_applied
 
-    QueuedPost.broadcast_new! if visible?
+    QueuedPost.broadcast_new! 
   end
 
 end

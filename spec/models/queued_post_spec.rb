@@ -3,22 +3,6 @@ require_dependency 'queued_post'
 
 describe QueuedPost do
 
-  describe '#states' do
-    context "verify enum sequence" do
-      before do
-        @states = QueuedPost.states
-      end
-
-      it "'new' should be at 1st position" do
-        expect(@states[:new]).to eq(1)
-      end
-
-      it "'rejected' should be at 3rd position" do
-        expect(@states[:rejected]).to eq(3)
-      end
-    end
-  end
-
   context "creating a post" do
     let(:topic) { Fabricate(:topic) }
     let(:user) { Fabricate(:user) }
@@ -146,55 +130,6 @@ describe QueuedPost do
         expect(Topic.count).to eq(topic_count)
         expect(Post.count).to eq(post_count)
       end
-    end
-  end
-
-  context "visibility" do
-    it "works as expected in the invisible queue" do
-      qp = Fabricate(:queued_post, queue: 'invisible')
-      expect(qp).to_not be_visible
-      expect(QueuedPost.visible).to_not include(qp)
-      expect(QueuedPost.new_count).to eq(0)
-    end
-
-    it "works as expected in the visible queue" do
-      qp = Fabricate(:queued_post, queue: 'default')
-      expect(qp).to be_visible
-      expect(QueuedPost.visible).to include(qp)
-      expect(QueuedPost.new_count).to eq(1)
-    end
-  end
-
-  describe 'create' do
-    subject { Fabricate.build(:queued_post) }
-
-    it 'triggers a extensibility event' do
-      event = DiscourseEvent.track_events { subject.save! }.first
-
-      expect(event[:event_name]).to eq(:queued_post_created)
-      expect(event[:params].first).to eq(subject)
-    end
-  end
-
-  describe 'approve' do
-    subject { Fabricate(:queued_post) }
-
-    it 'triggers a extensibility event' do
-      event = DiscourseEvent.track_events { subject.approve!(Discourse.system_user) }.last
-
-      expect(event[:event_name]).to eq(:approved_post)
-      expect(event[:params].first).to eq(subject)
-    end
-  end
-
-  describe 'reject' do
-    subject { Fabricate(:queued_post) }
-
-    it 'triggers a extensibility event' do
-      event = DiscourseEvent.track_events { subject.reject!(Discourse.system_user) }.last
-
-      expect(event[:event_name]).to eq(:rejected_post)
-      expect(event[:params].first).to eq(subject)
     end
   end
 
